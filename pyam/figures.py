@@ -22,7 +22,7 @@ def sankey(df, mapping):
         .. code-block:: python
 
             {
-                variable: (source, target),
+                variable: {(source, target)},
             }
 
         Returns
@@ -42,21 +42,25 @@ def sankey(df, mapping):
         for v in dv:
             _data.append({'variable': k, 'source': v[0], 'target': v[1]})
     _df = (
-        _df.append(_data,True)
-        .merge(df._data, left_on='variable', right_on='variable', left_index=True)
+        _df.append(_data, ignore_index=True)
+        .merge(df._data, left_on='variable', right_on='variable',
+               left_index=True)
     )
     _df.drop(columns='variable', inplace=True)
     _df = _df.groupby(['source', 'target']).sum()
     label_mapping = dict([(label, i) for i, label
-                          in enumerate(set(pd.Series(_df.index.get_level_values('source'))
-                                           .append(pd.Series(_df.index.get_level_values('target')))))])
+                          in enumerate(set(_df.index.get_level_values('source')
+                                           .append(_df
+                                                   .index
+                                                   .get_level_values('target'))
+                    ))])
     _df.reset_index(level=['source', 'target'], inplace=True)
     _df.replace(label_mapping, inplace=True)
-    #region = get_index_levels(_df, 'region')[0]
-    #unit = get_index_levels(_df, 'unit')[0]
-    #year = get_index_levels(_df, 'year')[0]
+    region = df._data.index.get_level_values('region')[0]
+    unit = df._data.index.get_level_values('unit')[0]
+    year = df._data.index.get_level_values('year')[0]
     fig = go.Figure(data=[go.Sankey(
-    #    valuesuffix=unit,
+        valuesuffix=unit,
         node=dict(
             pad=15,
             thickness=10,
@@ -73,6 +77,6 @@ def sankey(df, mapping):
                 %{value}<extra></extra>'
         )
     )])
-    #fig.update_layout(title_text=f'region: {region}, year: {year}',
-    #                  font_size=10)
+    fig.update_layout(title_text=f'region: {region}, year: {year}',
+                      font_size=10)
     return fig
