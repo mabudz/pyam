@@ -36,20 +36,27 @@ def sankey(df, mapping):
             raise ValueError(f'Non-unique values in column {col}: {levels}')
 
     # Concatenate the data with source and target columns
+    _df = pd.DataFrame(columns=['variable', 'source', 'target'])
+    _data = []
+    for k, dv in mapping.items():
+        for v in dv:
+            _data.append({'variable': k, 'source': v[0], 'target': v[1]})
     _df = (
-        pd.DataFrame.from_dict(mapping, orient='index',
-                               columns=['source', 'target'])
-        .merge(df._data, how='left', left_index=True, right_on='variable')
+        _df.append(_data,True)
+        .merge(df._data, left_on='variable', right_on='variable', left_index=True)
     )
+    _df.drop(columns='variable', inplace=True)
+    _df = _df.groupby(['source', 'target']).sum()
     label_mapping = dict([(label, i) for i, label
-                          in enumerate(set(_df['source']
-                                           .append(_df['target'])))])
+                          in enumerate(set(pd.Series(_df.index.get_level_values('source'))
+                                           .append(pd.Series(_df.index.get_level_values('target')))))])
+    _df.reset_index(level=['source', 'target'], inplace=True)
     _df.replace(label_mapping, inplace=True)
-    region = get_index_levels(_df, 'region')[0]
-    unit = get_index_levels(_df, 'unit')[0]
-    year = get_index_levels(_df, 'year')[0]
+    #region = get_index_levels(_df, 'region')[0]
+    #unit = get_index_levels(_df, 'unit')[0]
+    #year = get_index_levels(_df, 'year')[0]
     fig = go.Figure(data=[go.Sankey(
-        valuesuffix=unit,
+    #    valuesuffix=unit,
         node=dict(
             pad=15,
             thickness=10,
@@ -66,6 +73,6 @@ def sankey(df, mapping):
                 %{value}<extra></extra>'
         )
     )])
-    fig.update_layout(title_text=f'region: {region}, year: {year}',
-                      font_size=10)
+    #fig.update_layout(title_text=f'region: {region}, year: {year}',
+    #                  font_size=10)
     return fig
